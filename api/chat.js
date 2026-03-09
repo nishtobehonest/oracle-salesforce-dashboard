@@ -1,17 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { buildSystemPrompt } from '../src/utils/caseContext.js';
 
 export const config = {
   maxDuration: 60,
 };
-
-// Convert Anthropic-style messages to Gemini format
-function toGeminiHistory(messages) {
-  return messages.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,20 +17,22 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-preview-04-17',
-      systemInstruction: buildSystemPrompt(activeTab),
-    });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const history = toGeminiHistory(messages.slice(0, -1));
+    const history = messages.slice(0, -1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
     const lastMessage = messages[messages.length - 1].content;
 
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessageStream(lastMessage);
+    const response = await ai.models.generateContentStream({
+      model: 'gemini-2.5-flash',
+      contents: [...history, { role: 'user', parts: [{ text: lastMessage }] }],
+      config: { systemInstruction: buildSystemPrompt(activeTab) },
+    });
 
-    for await (const chunk of result.stream) {
-      const text = chunk.text();
+    for await (const chunk of response) {
+      const text = chunk.text;
       if (text) {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
