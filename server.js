@@ -10,7 +10,7 @@ import { buildSystemPrompt } from './src/utils/caseContext.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app = express();
-app.use(cors({ origin: process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173' }));
+app.use(cors({ origin: process.env.NODE_ENV === 'production' ? true : 'http://localhost:5174' }));
 app.use(express.json());
 
 // Convert Anthropic-style messages to Gemini format
@@ -31,7 +31,7 @@ app.post('/chat', async (req, res) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash-preview-04-17',
       systemInstruction: buildSystemPrompt(activeTab),
     });
 
@@ -61,7 +61,7 @@ app.post('/chat', async (req, res) => {
 const distPath = join(__dirname, 'dist');
 if (existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get('*', (req, res) => res.sendFile(join(distPath, 'index.html')));
+  app.use((req, res) => res.sendFile(join(distPath, 'index.html')));
 }
 
 const PORT = process.env.PORT || 3001;
