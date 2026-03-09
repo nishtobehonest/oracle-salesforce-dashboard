@@ -89,6 +89,15 @@ export default function ChatModal({ activeTab }) {
                 };
                 return updated;
               });
+            } else if (parsed.error) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  role: 'assistant',
+                  content: `Error: ${parsed.error}`,
+                };
+                return updated;
+              });
             }
           } catch {
             // ignore parse errors
