@@ -1,9 +1,17 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { buildSystemPrompt } from '../src/utils/caseContext.js';
 
 export const config = {
   maxDuration: 60,
 };
+
+// Convert Anthropic-style messages to Gemini format
+function toGeminiHistory(messages) {
+  return messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,18 +25,22 @@ export default async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    const stream = client.messages.stream({
-      model: 'claude-opus-4-6',
-      max_tokens: 1024,
-      system: buildSystemPrompt(activeTab),
-      messages,
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: buildSystemPrompt(activeTab),
     });
 
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+    const history = toGeminiHistory(messages.slice(0, -1));
+    const lastMessage = messages[messages.length - 1].content;
+
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessageStream(lastMessage);
+
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
 
