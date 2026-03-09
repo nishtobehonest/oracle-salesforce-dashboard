@@ -65,4 +65,7 @@ if (existsSync(distPath)) {
 }
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log('GEMINI_API_KEY loaded:', process.env.GEMINI_API_KEY ? 'YES ✓' : 'NO ✗ — check .env file');
+});
